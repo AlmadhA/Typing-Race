@@ -184,7 +184,13 @@
             font-family: 'Consolas', 'Courier New', monospace;
             margin-bottom: 20px;
             min-height: 120px;
+            width: 100%;
+            box-sizing: border-box;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
+        #quote-display span { white-space: pre-wrap; }
         #quote-display .char-pending { color: #666; }
         #quote-display .char-correct { color: var(--correct); }
         #quote-display .char-wrong { color: var(--wrong); background: rgba(255,59,48,0.2); border-radius: 2px; }
@@ -202,6 +208,8 @@
 
         #typing-zone {
             cursor: text;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         #click-to-focus-msg {
@@ -499,7 +507,7 @@
                 } else if (i === currentCharIndex) {
                     cls = "char-pending char-current";
                 }
-                const ch = text[i] === " " ? "&nbsp;" : escapeHtml(text[i]);
+                const ch = text[i] === " " ? " " : escapeHtml(text[i]);
                 html += `<span class="${cls}">${ch}</span>`;
             }
             quoteDisplayEl.innerHTML = html;
