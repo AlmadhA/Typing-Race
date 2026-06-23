@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Race</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --surface: #1a1a1a;
+            --accent: #2196F3;
+            --correct: #4cd964;
+            --wrong: #ff3b30;
+            --gold: #ffd700;
+            --text-muted: #888;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* LIVE GLOBAL LEADERBOARD TOP 10 */
+        .global-leaderboard {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--gold);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            z-index: 250;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+            max-width: 250px;
+            max-height: 45vh;
+            overflow-y: auto;
+            color: white;
+        }
+        .global-leaderboard h3 {
+            margin: 0 0 6px 0;
+            color: var(--gold);
+            font-size: 0.85rem;
+            text-align: center;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 6px;
+        }
+        .leaderboard-list { list-style: none; margin: 0; padding: 0; }
+        .leaderboard-list li {
+            display: flex; align-items: center; gap: 6px;
+            padding: 3px 0; color: #ddd; white-space: nowrap;
+        }
+        .leaderboard-list li .rank { color: var(--gold); font-weight: bold; min-width: 18px; }
+        .leaderboard-list li .lb-name { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; text-align: left; padding: 0 4px; }
+        .leaderboard-list li .lb-wpm { color: var(--correct); font-weight: bold; min-width: 48px; text-align: right; }
+        .leaderboard-list li .lb-acc { color: #aaa; min-width: 38px; text-align: right; font-size: 0.7rem; }
+        .leaderboard-list li.is-you { background: rgba(33,150,243,0.18); border-radius: 4px; }
+        .leaderboard-empty { color: #888; text-align: center; padding: 6px 0; font-size: 0.75rem; }
+        .leaderboard-error { color: #ff6b6b; text-align: center; padding: 6px 0; font-size: 0.72rem; line-height: 1.3; }
+
+        /* GAME HUB: LIST LINK KE GAME-GAME LAIN */
+        .game-hub {
+            position: fixed;
+            top: 200px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--gold);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            z-index: 250;
+            box-shadow: 0 0 8px rgba(255, 215, 0, 0.2);
+            max-width: 250px;
+            max-height: 40vh;
+            overflow-y: auto;
+            color: white;
+        }
+        .game-hub h3 {
+            margin: 0 0 6px 0;
+            color: var(--gold);
+            font-size: 0.85rem;
+            text-align: center;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 6px;
+        }
+        .game-hub-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .game-hub-list li a {
+            display: block; text-decoration: none; color: #ddd;
+            background: rgba(255,255,255,0.05); padding: 6px 10px; border-radius: 5px;
+            transition: background 0.2s, color 0.2s;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .game-hub-list li a:hover { background: rgba(255, 215, 0, 0.15); color: var(--gold); }
+        .game-hub-list li a.active-page {
+            background: rgba(255, 215, 0, 0.25); color: var(--gold);
+            font-weight: bold; pointer-events: none;
+        }
+
+        /* WELCOME OVERLAY */
+        .fullscreen-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .welcome-box {
+            text-align: center; background: var(--surface); padding: 40px;
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid #333; max-width: 420px; margin: 15px;
+        }
+        .welcome-box h1 { margin-bottom: 10px; color: var(--accent); letter-spacing: 2px; }
+        .welcome-box p { font-size: 1.1rem; margin-bottom: 25px; color: #ccc; }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px; text-align: left; }
+        .input-group label { font-size: 0.85rem; color: #aaa; font-weight: bold; }
+        .input-group input[type="text"] {
+            padding: 10px; background: #2a2a2a; color: white;
+            border: 1px solid #444; border-radius: 5px; font-size: 1rem; outline: none;
+        }
+
+        .btn-choice {
+            padding: 12px 30px; font-size: 1.1rem; font-weight: bold;
+            border: none; border-radius: 6px; cursor: pointer;
+            margin: 0 10px; transition: transform 0.1s;
+        }
+        .btn-choice:active { transform: scale(0.95); }
+        #btn-yes { background-color: var(--accent); color: white; }
+        #btn-no { background-color: #e03c3c; color: white; }
+
+        /* MAIN GAME SCREEN */
+        #main-game {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 40px;
+        }
+
+        /* LIVE STATS BAR (WPM sementara + Timer berjalan) */
+        .stats-bar {
+            display: flex; justify-content: center; gap: 30px;
+            background: var(--surface); padding: 12px 20px; border-radius: 8px;
+            margin-bottom: 20px; border: 1px solid #2a2a2a;
+        }
+        .stat-box { text-align: center; }
+        .stat-box span { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .stat-box strong { font-size: 1.4rem; color: white; }
+
+        /* QUOTE DISPLAY (ala TypeRacer, sederhana) */
+        #quote-display {
+            background: var(--surface);
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            font-size: 1.4rem;
+            line-height: 1.8;
+            letter-spacing: 0.5px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin-bottom: 20px;
+            min-height: 120px;
+        }
+        #quote-display .char-pending { color: #666; }
+        #quote-display .char-correct { color: var(--correct); }
+        #quote-display .char-wrong { color: var(--wrong); background: rgba(255,59,48,0.2); border-radius: 2px; }
+        #quote-display .char-current { border-bottom: 3px solid var(--accent); animation: blink 1s step-start infinite; }
+        @keyframes blink { 50% { border-color: transparent; } }
+
+        /* HIDDEN INPUT (capture keystrokes) */
+        #hidden-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            height: 0;
+            width: 0;
+        }
+
+        #typing-zone {
+            cursor: text;
+        }
+
+        #click-to-focus-msg {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        #reset-btn {
+            display: block;
+            margin: 20px auto 0;
+            background-color: var(--accent); color: white;
+            border: none; padding: 10px 25px; font-size: 0.95rem;
+            font-weight: bold; border-radius: 4px; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #reset-btn:hover { background-color: #1976D2; }
+
+        /* RESULT SCREEN */
+        #result-box {
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--gold);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #result-box h2 { color: var(--gold); margin-top: 0; }
+        .result-stats { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+        .result-stat { text-align: center; }
+        .result-stat span { display: block; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+        .result-stat strong { font-size: 2.2rem; color: white; }
+        .result-stat.wpm strong { color: var(--correct); }
+        .result-stat.acc strong { color: var(--accent); }
+        #result-source {
+            font-size: 0.9rem; color: var(--text-muted); font-style: italic;
+            margin-top: 15px; border-top: 1px solid #333; padding-top: 15px;
+        }
+
+        #message {
+            position: fixed; top: 12%; left: 50%; transform: translateX(-50%);
+            background-color: #333; color: white;
+            padding: 10px 20px; border-radius: 5px; font-weight: bold;
+            z-index: 300; opacity: 0; transition: opacity 0.2s ease-in-out; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LIVE GLOBAL LEADERBOARD TOP 10 -->
+    <div class="global-leaderboard">
+        <h3>🏆 TOP 10 Leaderboard</h3>
+        <ol class="leaderboard-list" id="leaderboard-list">
+            <li class="leaderboard-empty">Loading Data ...</li>
+        </ol>
+    </div>
+
+    <!-- GAME HUB: LIST LINK KE GAME-GAME LAIN -->
+    <div class="game-hub">
+        <h3>🎮 GAME LIST</h3>
+        <ul class="game-hub-list">
+            <li><a href="https://USERNAME.github.io/REPO/squid-game.html">🦑 Squid Game</a></li>
+            <li><a href="https://USERNAME.github.io/REPO/wordle.html">🔤 Wordle Indonesia</a></li>
+            <li><a href="https://USERNAME.github.io/REPO/typingrace.html" class="active-page">⌨️ Typing Speed Race</a></li>
+            <li><a href="#">🎯 Game Baru (placeholder)</a></li>
+        </ul>
+    </div>
+
+    <div id="message">Pesan</div>
+
+    <!-- WELCOME SCREEN -->
+    <div id="welcome-overlay">
+        <div class="welcome-box">
+            <h1>⌨️ TYPING SPEED RACE</h1>
+            <p>Seberapa cepat jarimu mengetik? Uji kecepatan dan akurasimu sekarang!</p>
+            <div class="input-group">
+                <label for="player-name-input">Your Name:</label>
+                <input type="text" id="player-name-input" placeholder="Enter your name..." autocomplete="off">
+            </div>
+            <button class="btn-choice" id="btn-yes" onclick="startGame()">START</button>
+            <button class="btn-choice" id="btn-no" onclick="closePage()">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- MAIN GAME SCREEN -->
+    <div id="main-game">
+        <header>TYPING SPEED RACE</header>
+
+        <div id="game-container">
+
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <span>Time</span>
+                    <strong id="live-timer">0.0s</strong>
+                </div>
+                <div class="stat-box">
+                    <span>WPM</span>
+                    <strong id="live-wpm">0</strong>
+                </div>
+                <div class="stat-box">
+                    <span>Errors</span>
+                    <strong id="live-errors">0</strong>
+                </div>
+            </div>
+
+            <div id="click-to-focus-msg">Klik kotak teks di bawah ini, lalu mulai mengetik untuk memulai!</div>
+
+            <div id="typing-zone" onclick="focusHiddenInput()">
+                <div id="quote-display"></div>
+            </div>
+
+            <input type="text" id="hidden-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+            <!-- RESULT SCREEN (muncul setelah selesai mengetik) -->
+            <div id="result-box">
+                <h2>🎉 Selesai!</h2>
+                <div class="result-stats">
+                    <div class="result-stat wpm">
+                        <span>WPM</span>
+                        <strong id="result-wpm">0</strong>
+                    </div>
+                    <div class="result-stat acc">
+                        <span>Akurasi</span>
+                        <strong id="result-acc">0%</strong>
+                    </div>
+                </div>
+                <div id="result-source">Sumber: -</div>
+            </div>
+
+            <button id="reset-btn" onclick="resetGame()" style="display:none;">Coba Lagi 🔄</button>
+        </div>
+    </div>
+
+    <script src="quotes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // SUPABASE CREDENTIALS DIRECT CONNECTION
+        const SUPABASE_URL = "https://eqfimiakzjmsighcptyk.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_6KMxDxSO7BqIUqAkGpZOQw_pIaNxEK8";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const LEADERBOARD_TABLE = "leaderboard_typingrace";
+
+        // LEADERBOARD INDEPENDENT VARIABLES
+        let currentPlayerName = "Anonymous";
+        let cachedLeaderboard = [];
+
+        // GAME STATE
+        let currentQuote = null;
+        let currentCharIndex = 0;
+        let typedChars = [];        // jejak tiap karakter: 'correct' | 'wrong' (untuk hitung akurasi)
+        let totalKeystrokeErrors = 0;
+        let startTime = null;
+        let timerInterval = null;
+        let gameFinished = false;
+
+        const quoteDisplayEl = document.getElementById("quote-display");
+        const hiddenInputEl = document.getElementById("hidden-input");
+        const messageEl = document.getElementById("message");
+
+        // LOAD TOP 10 LEADERBOARD DATA WHEN PAGE FIRST OPENS
+        window.addEventListener("DOMContentLoaded", () => {
+            ambilTopSkorGlobal();
+        });
+
+        // =====================================================================
+        // LEADERBOARD TOP 10 (WPM + AKURASI, urut berdasarkan WPM tertinggi)
+        // =====================================================================
+        async function ambilTopSkorGlobal() {
+            const listEl = document.getElementById("leaderboard-list");
+            try {
+                const { data, error } = await supabaseClient
+                    .from(LEADERBOARD_TABLE)
+                    .select('name, wpm, accuracy')
+                    .order('wpm', { ascending: false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                cachedLeaderboard = data || [];
+                renderLeaderboard();
+            } catch (err) {
+                console.error("Failed to pull Leaderboard data:", err.message);
+                listEl.innerHTML = `<li class="leaderboard-error">Failed to load: ${err.message}</li>`;
+            }
+        }
+
+        function renderLeaderboard() {
+            const listEl = document.getElementById("leaderboard-list");
+
+            if (!cachedLeaderboard || cachedLeaderboard.length === 0) {
+                listEl.innerHTML = `<li class="leaderboard-empty">No data yet</li>`;
+                return;
+            }
+
+            listEl.innerHTML = cachedLeaderboard.map((row, i) => {
+                const isYou = row.name === currentPlayerName ? "is-you" : "";
+                const wpmVal = parseFloat(row.wpm);
+                const accVal = parseFloat(row.accuracy);
+                return `<li class="${isYou}">
+                            <span class="rank">#${i + 1}</span>
+                            <span class="lb-name">${escapeHtml(row.name)}</span>
+                            <span class="lb-wpm">${wpmVal} WPM</span>
+                            <span class="lb-acc">${accVal}%</span>
+                        </li>`;
+            }).join("");
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Setiap main = INSERT baris baru (history, bukan akumulasi)
+        async function kirimSkorGlobal(wpm, accuracy) {
+            try {
+                const { error } = await supabaseClient
+                    .from(LEADERBOARD_TABLE)
+                    .insert([{ name: currentPlayerName, wpm: wpm, accuracy: accuracy }]);
+
+                if (error) throw error;
+
+                await ambilTopSkorGlobal(); // Refresh tampilan leaderboard top 10
+            } catch (err) {
+                console.error("Failed to send new score data:", err.message);
+            }
+        }
+
+        // =====================================================================
+        // WELCOME SCREEN
+        // =====================================================================
+        function startGame() {
+            let nameInput = document.getElementById("player-name-input").value.trim();
+            if (!nameInput) {
+                alert("Please enter your name before starting!");
+                return;
+            }
+            currentPlayerName = nameInput;
+
+            document.getElementById("welcome-overlay").style.display = "none";
+            document.getElementById("main-game").style.display = "flex";
+            initGame();
+        }
+
+        function closePage() {
+            document.getElementById("welcome-overlay").innerHTML = `
+                <div class="welcome-box">
+                    <h2 style="color:#e03c3c;">Access Denied</h2>
+                    <p>Page closed because you're not mentally ready yet. Please come back another time.</p>
+                </div>`;
+        }
+
+        // =====================================================================
+        // INIT GAME LOGIC
+        // =====================================================================
+        function initGame() {
+            // Reset semua state
+            currentCharIndex = 0;
+            typedChars = [];
+            totalKeystrokeErrors = 0;
+            startTime = null;
+            gameFinished = false;
+            if (timerInterval) clearInterval(timerInterval);
+
+            document.getElementById("result-box").style.display = "none";
+            document.getElementById("reset-btn").style.display = "none";
+            document.getElementById("click-to-focus-msg").style.display = "block";
+            document.getElementById("live-timer").textContent = "0.0s";
+            document.getElementById("live-wpm").textContent = "0";
+            document.getElementById("live-errors").textContent = "0";
+
+            // Pilih kutipan acak dari QUOTES_LIST (didefinisikan di quotes.js)
+            currentQuote = QUOTES_LIST[Math.floor(Math.random() * QUOTES_LIST.length)];
+
+            renderQuoteDisplay();
+            hiddenInputEl.value = "";
+            focusHiddenInput();
+        }
+
+        function focusHiddenInput() {
+            if (!gameFinished) hiddenInputEl.focus();
+        }
+
+        // Render teks kutipan dengan span per karakter untuk keperluan highlight
+        function renderQuoteDisplay() {
+            const text = currentQuote.text;
+            let html = "";
+            for (let i = 0; i < text.length; i++) {
+                let cls = "char-pending";
+                if (i < typedChars.length) {
+                    cls = typedChars[i] === "correct" ? "char-correct" : "char-wrong";
+                } else if (i === currentCharIndex) {
+                    cls = "char-pending char-current";
+                }
+                const ch = text[i] === " " ? "&nbsp;" : escapeHtml(text[i]);
+                html += `<span class="${cls}">${ch}</span>`;
+            }
+            quoteDisplayEl.innerHTML = html;
+        }
+
+        // =====================================================================
+        // HANDLE TYPING INPUT (STRICT MODE: tidak bisa lanjut kalau masih salah)
+        // =====================================================================
+        hiddenInputEl.addEventListener("keydown", (e) => {
+            if (gameFinished) return;
+
+            const text = currentQuote.text;
+
+            // Backspace: hapus karakter terakhir yang sudah diketik
+            if (e.key === "Backspace") {
+                e.preventDefault();
+                if (currentCharIndex > 0) {
+                    currentCharIndex--;
+                    typedChars.pop();
+                    renderQuoteDisplay();
+                }
+                return;
+            }
+
+            // Hanya proses karakter tunggal yang valid (huruf, angka, simbol, spasi)
+            if (e.key.length !== 1) return;
+            e.preventDefault();
+
+            // Mulai timer di keystroke pertama
+            if (startTime === null) {
+                startTime = Date.now();
+                timerInterval = setInterval(updateLiveStats, 100);
+            }
+
+            const expectedChar = text[currentCharIndex];
+            const typedChar = e.key;
+
+            if (typedChar === expectedChar) {
+                // Benar -> lanjut ke karakter berikutnya
+                typedChars.push("correct");
+                currentCharIndex++;
+            } else {
+                // Salah -> STRICT MODE: tidak lanjut, hanya catat sebagai error
+                // (karakter ini akan ditampilkan merah, pemain harus benarkan lewat backspace+ulang)
+                totalKeystrokeErrors++;
+                typedChars.push("wrong");
+                document.getElementById("live-errors").textContent = totalKeystrokeErrors;
+                renderQuoteDisplay();
+                // STRICT: kembalikan index huruf yang salah supaya tidak maju
+                // (tampilkan sebentar sebagai merah lalu otomatis kembali ke posisi semula)
+                setTimeout(() => {
+                    typedChars.pop();
+                    renderQuoteDisplay();
+                }, 150);
+                return;
+            }
+
+            renderQuoteDisplay();
+
+            // Cek apakah sudah selesai mengetik semua karakter dengan benar
+            if (currentCharIndex >= text.length) {
+                finishGame();
+            }
+        });
+
+        function updateLiveStats() {
+            if (startTime === null || gameFinished) return;
+            const elapsedSeconds = (Date.now() - startTime) / 1000;
+            document.getElementById("live-timer").textContent = elapsedSeconds.toFixed(1) + "s";
+
+            const wordsTyped = currentCharIndex / 5; // konvensi standar: 1 word = 5 karakter
+            const minutes = elapsedSeconds / 60;
+            const currentWpm = minutes > 0 ? Math.round(wordsTyped / minutes) : 0;
+            document.getElementById("live-wpm").textContent = currentWpm;
+        }
+
+        // =====================================================================
+        // FINISH GAME: HITUNG WPM & AKURASI FINAL
+        // =====================================================================
+        function finishGame() {
+            gameFinished = true;
+            clearInterval(timerInterval);
+
+            const elapsedSeconds = (Date.now() - startTime) / 1000;
+            const elapsedMinutes = elapsedSeconds / 60;
+
+            const totalChars = currentQuote.text.length;
+            const wordsTyped = totalChars / 5;
+            const finalWpm = elapsedMinutes > 0 ? Math.round(wordsTyped / elapsedMinutes) : 0;
+
+            // Akurasi: dari total keystroke (benar + salah), berapa persen yang benar di percobaan pertama
+            const totalKeystrokes = totalChars + totalKeystrokeErrors;
+            const finalAccuracy = totalKeystrokes > 0
+                ? Math.round((totalChars / totalKeystrokes) * 100)
+                : 100;
+
+            document.getElementById("result-wpm").textContent = finalWpm;
+            document.getElementById("result-acc").textContent = finalAccuracy + "%";
+            document.getElementById("result-source").textContent = `Sumber: ${currentQuote.source}`;
+            document.getElementById("result-box").style.display = "block";
+            document.getElementById("reset-btn").style.display = "block";
+            document.getElementById("click-to-focus-msg").style.display = "none";
+
+            showMessage("Selesai! 🎉");
+            kirimSkorGlobal(finalWpm, finalAccuracy);
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        function showMessage(msg) {
+            messageEl.textContent = msg;
+            messageEl.style.opacity = 1;
+            setTimeout(() => messageEl.style.opacity = 0, 2000);
+        }
+    </script>
+</body>
+</html>
